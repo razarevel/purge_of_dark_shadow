@@ -1,0 +1,14 @@
+{
+  "name": "Purge Of Black Shadow",
+  "width": 1200,
+  "height": 800,
+  "api": 0,
+  "window_mode": 0,
+  "anti_alising": 0,
+  "shadows": 0,
+  "ambient_occlusion": 0,
+  "lighting": 0,
+  "textures": 0,
+  "bloom": 0,
+  "motion_blur": 0
+}
