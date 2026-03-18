@@ -1,59 +1,64 @@
 #include "Engine/renderer/renderer.h"
-#include <stdexcept>
+#include <cassert>
 #include <iostream>
 
-Renderer::Renderer(GameSettings& settings) :settings(settings) {
-	if (settings.api == VULKAN) {
-		initWindow();
-		vkApi = new VulkanApi(window, settings.appName.c_str());
+Renderer::Renderer(const Settings &set) : settings(set) {
+	initWindow();
+	bool vkWorked = false;
+
+	Api api = settings.api;
+
+	if (api == Vulkan) {
+		vkApi = new VulkanApi(window, settings);
+		if (!vkApi->init()) {
+			api = Directx11;
+			std::cerr << "failed to initialize vulkan" << std::endl;
+		}
+		else
+			std::cout << "vulkan initialized successfully" << std::endl;
 	}
+
+	if (api == Directx11) {
+		dx11Api = new Dx11Api(window, settings);
+		if (!dx11Api->Initialize()) {
+			std::cerr << "failed to intialize dx 11" << std::endl;
+			assert(false);
+		}
+		std::cout << "Directx 11 initialized successfully" << std::endl;
+	}
+		
 }
 
 void Renderer::initWindow() {
 	if (!glfwInit())
-		throw std::runtime_error("failed to init window");
+		throw std::runtime_error("failed to init glfw");
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	GLFWmonitor* monitor = nullptr;
 
-	if(settings.win_mode == Fullscreen)
-		monitor = glfwGetPrimaryMonitor();
+	window = glfwCreateWindow(
+		settings.width, settings.height, settings.appName.c_str(),
+		settings.win_mode == Fullscreen ? glfwGetPrimaryMonitor() : nullptr, nullptr);
 
+	if (window == nullptr)
+		throw std::runtime_error("failed to create window");
 
-	window = glfwCreateWindow(settings.width, settings.height, settings.appName.c_str(), monitor, nullptr);
+	glfwSetFramebufferSizeCallback(window, HandleResize);
 
-	glfwSetKeyCallback(window,
-		[](auto* window, int keys, int, int action, int mods) {
-			if (keys == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-				glfwSetWindowShouldClose(window, GLFW_TRUE);
-		});
 }
 
-void Renderer::blackScreen() {
-		CmdBuff* buff = vkApi->acquireCmdBuff();
-		buff->cmdBeginBuffer(vkApi->frameIndex);
-		{
-			buff->cmdBeginRendering({
-				.frameIndex = vkApi->frameIndex,
-				.extent = vkApi->swapChainExtent,
-				.colors = {{
-							.image = vkApi->getSwapChainImage(),
-							.view = vkApi->getSwapChainImageView(),
+void Renderer::HandleResize(GLFWwindow* window, int width, int height) {
+	Renderer* ren = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
+	ren->onResize(width, height);
+}
 
-					}},
-				});
-			buff->cmdEndRendering(vkApi->getSwapChainImage(), vkApi->frameIndex);
-		}
-		buff->cmdEndBuffer(vkApi->frameIndex);
-
-		vkApi->submit();
+void Renderer::onResize(int width, int height) {
+	settings.width = (uint32_t)width;
+	settings.height = (uint32_t)height;
 }
 
 Renderer::~Renderer() {
-	if (settings.api == VULKAN) {
-		glfwDestroyWindow(window);
-		glfwTerminate();
+	if (vkApi != nullptr)
 		delete vkApi;
-	}
-
+	if (dx11Api != nullptr)
+		delete dx11Api;
 }

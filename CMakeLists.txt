@@ -9,6 +9,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(Vulkan REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(Ktx CONFIG REQUIRED)
+find_package(assimp CONFIG REQUIRED)
+add_subdirectory(thirdParty/imgui)
 
 file(GLOB_RECURSE MY_SOURCES CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
@@ -16,12 +18,15 @@ file(GLOB_RECURSE MY_SOURCES CMAKE_CONFIGURE_DEPENDS
 
 add_executable(purge ${MY_SOURCES})
 
+
 target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC RESOURCES_PATH="${CMAKE_CURRENT_SOURCE_DIR}/resources/")
 target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC SHADERS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/shaders/")
 
 target_include_directories(purge
     PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
+     PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/thirdParty/imgui"
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
@@ -30,6 +35,8 @@ target_include_directories(purge
 target_link_libraries(purge
     PUBLIC
         glfw
-		Vulkan::Vulkan
+        Vulkan::Vulkan
         KTX::ktx
+        assimp::assimp
+        imgui
 )

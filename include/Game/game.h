@@ -1,14 +1,14 @@
 #pragma once
+
+#include "Engine/settings.h"
 #include "Engine/renderer/renderer.h"
-#include "Game/game_settings.h"
-#include "Game/sandbox.h"
 
 struct Game {
 	Game();
-	void run();
 	~Game();
+	void run();
+
 private:
-	Renderer* ren;
-	GameSettings settings;
-	Sandbox* sandbox;
+	Renderer* ren_;
+	Settings settings;
 };

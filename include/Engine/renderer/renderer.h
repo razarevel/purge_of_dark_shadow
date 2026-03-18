@@ -1,20 +1,24 @@
 #pragma once
-#include<cstdint>
-#include "Game/game_settings.h"
-#include "Engine/renderer/vulkan/vulkanApi.h"
+
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+
+#include "Engine/settings.h"
+#include "directx/dx11_api.h"
+#include "vulkan/vulkan_api.h"
 
 struct Renderer {
-	Renderer(GameSettings &settings);
+	Renderer(const Settings &settings);
 	~Renderer();
 
-	void blackScreen();
-
-	VulkanApi* vkApi = nullptr;
-	GameSettings& settings;
-	GLFWwindow* window = nullptr;
-
-
 private:
+	GLFWwindow* window = nullptr;
+	Settings settings;
+	VulkanApi* vkApi = nullptr;
+	Dx11Api* dx11Api = nullptr;
 
 	void initWindow();
+
+	static void HandleResize(GLFWwindow* window, int width, int height);
+	void onResize(int widht, int height);
 };
