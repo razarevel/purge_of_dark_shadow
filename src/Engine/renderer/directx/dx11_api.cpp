@@ -5,6 +5,8 @@
 #include <GLFW/glfw3native.h>
 
 #include <iostream>
+#include <cassert>
+#include <fstream>
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -80,9 +82,14 @@ bool Dx11Api::createSwapChainResources() {
 		return false;
 	}
 
+	D3D11_RENDER_TARGET_VIEW_DESC rtvDesc = {
+		.Format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,
+		.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D,
+	};
+
 	if (FAILED(_device->CreateRenderTargetView(
 		backBuffer.Get(),
-		nullptr,
+		&rtvDesc,
 		&_renderTarget
 	))) {
 		std::cerr << "D3D11: Failed to create RTV from back buffer" << std::endl;
@@ -92,8 +99,112 @@ bool Dx11Api::createSwapChainResources() {
 	return true;
 }
 
+void Dx11Api::Render() {
+	D3D11_VIEWPORT viewport = {
+		.TopLeftX = 0,
+		.TopLeftY = 0,
+		.Width = static_cast<float>(settings.width),
+		.Height = static_cast<float>(settings.height),
+		.MinDepth = 0.0f,
+		.MaxDepth = 1.0f,
+	};
+
+	const float clearColor[] = { 0.1f, 0.1f, 0.1f, 1.f };
+
+	_deviceContext->ClearRenderTargetView(_renderTarget.Get(), clearColor);
+	_deviceContext->RSSetViewports(1, &viewport);
+	_deviceContext->OMSetRenderTargets(1, _renderTarget.GetAddressOf(), nullptr);
+
+}
+
 void Dx11Api::destroySwapChainResources() {
 	_renderTarget.Reset();
+}
+
+ComPtr<ID3D11Buffer> Dx11Api::createBuffer(D3D11_BUFFER_DESC& bufferInfo, D3D11_SUBRESOURCE_DATA& resourcesData) {
+	ComPtr<ID3D11Buffer> buff = nullptr;
+	if (FAILED(_device->CreateBuffer(
+		&bufferInfo,
+		&resourcesData,
+		&buff))) {
+		std::cerr << "D3D11: Failed to create triangle vertex buffer" << std::endl;
+		assert(false);
+	}
+	return buff;
+}
+
+ComPtr<ID3D11VertexShader> Dx11Api::createVertexShader(const char* filename, std::vector<D3D11_INPUT_ELEMENT_DESC> &infos, ComPtr<ID3D11InputLayout> &layout) {
+	ComPtr<ID3DBlob> blob = CompileShader(filename, "VsMain", "vs_5_0");
+
+	ComPtr<ID3D11VertexShader> vertexShader;
+	if (FAILED(_device->CreateVertexShader(
+		blob->GetBufferPointer(),
+		blob->GetBufferSize(),
+		nullptr,
+		&vertexShader))) {
+		std::cerr << "D3D11: failed to create vertex shader" << std::endl;
+		assert(false);
+	}
+
+	if (!infos.empty()) {
+		if (FAILED(_device->CreateInputLayout(
+			infos.data(),
+			(UINT)infos.size(),
+			blob->GetBufferPointer(),
+			blob->GetBufferSize(),
+			&layout)))
+		{
+			std::cerr << "D3D11: Failed to create default vertex input layout\n";
+			return nullptr;
+		}
+	}
+
+	return vertexShader;
+}
+
+ComPtr<ID3D11PixelShader> Dx11Api::createPixelShader(const char* filename) {
+	ComPtr<ID3DBlob> blob = CompileShader(filename, "PsMain", "ps_5_0");
+
+	ComPtr<ID3D11PixelShader> pixelShader;
+	if (FAILED(_device->CreatePixelShader(
+		blob->GetBufferPointer(),
+		blob->GetBufferSize(),
+		nullptr,
+		&pixelShader))) {
+		std::cerr << "D3D11: failed to create vertex shader" << std::endl;
+		assert(false);
+	}
+	return pixelShader;
+}
+
+ComPtr<ID3DBlob> Dx11Api::CompileShader(const std::string& filename, const std::string& entryPoint, const std::string& profile) {
+	const uint32_t compilerFlag = D3D10_SHADER_ENABLE_STRICTNESS;
+
+	ComPtr<ID3DBlob> tempShaderBlob = nullptr;
+	ComPtr<ID3DBlob> errorBlob = nullptr;
+
+	const std::wstring path(filename.begin(), filename.end());
+
+	if (FAILED(D3DCompileFromFile(
+		path.data(),
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		entryPoint.data(),
+		profile.data(),
+		compilerFlag,
+		0,
+		&tempShaderBlob,
+		&errorBlob
+	))) {
+		std::cerr << "D3D11::Failed to create read shader from file" << std::endl;
+		std::cout << "Path:" << filename << std::endl;
+		if (errorBlob != nullptr)
+			std::cerr << "D3D11: With message: " << static_cast<const char*>(errorBlob->GetBufferPointer()) << std::endl;
+
+		return nullptr;
+	}
+	
+	return tempShaderBlob;
 }
 
 Dx11Api::~Dx11Api() {

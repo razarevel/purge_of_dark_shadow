@@ -16,6 +16,12 @@ struct QueueFamilyIndices {
     }
 };
 
+struct SwapChainSupportDetails {
+    VkSurfaceCapabilitiesKHR capabilities;
+    std::vector<VkSurfaceFormatKHR> surfaceFormats;
+    std::vector<VkPresentModeKHR> presentModes;
+};
+
 const std::vector<const char*> validationLayers = {
     "VK_LAYER_KHRONOS_validation",
 };
@@ -27,6 +33,8 @@ const std::vector<const char*> deviceExtensions = {
     VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
     VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
 };
+
+constexpr uint32_t MAX_FRAMES_IN_FLIGHTS = 2;
 
 
 bool checkValidation();
@@ -52,3 +60,9 @@ void populateDebugMessenger(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 bool isDeviceSuitable(VkPhysicalDevice device);
 
 QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface);
+
+VkSurfaceFormatKHR chooseSwapChainFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+VkPresentModeKHR chooseSwapChainPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+VkExtent2D chooseSwapChainExtent(VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow* window);
+
+SwapChainSupportDetails querrySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);

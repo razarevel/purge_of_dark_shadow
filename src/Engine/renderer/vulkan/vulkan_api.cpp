@@ -1,7 +1,8 @@
 #include "Engine/renderer/vulkan/vulkan_api.h"
 #include <iostream>
+#include <cassert>
 
-VulkanApi::VulkanApi(GLFWwindow* window, Settings& settings): window(window), settings(settings) {}
+VulkanApi::VulkanApi(GLFWwindow* window, Settings& settings, bool enableDeb): window(window), settings(settings), enableDebugger(enableDeb) {}
 
 bool VulkanApi::init() {
 	if (!createInstance())
@@ -18,6 +19,18 @@ bool VulkanApi::init() {
 		return false;
 
 	if (!createLogicalDevice())
+		return false;
+
+	if (!createVmaAllocation())
+		return false;
+
+	if (!createSwapChain())
+		return false;
+	
+	if (!createSwapChainImageViews())
+		return false;
+
+	if (!createSyncObj())
 		return false;
 
 	return true;
@@ -207,7 +220,224 @@ bool VulkanApi::createLogicalDevice() {
 	return true;
 }
 
+bool VulkanApi::createVmaAllocation() {
+	VmaAllocatorCreateInfo createInfo = {
+		.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT |
+			   VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
+		.physicalDevice = physicalDevice,
+		.device = device,
+		.instance = instance,
+		.vulkanApiVersion = VK_API_VERSION_1_3,
+	};
+
+	if (vmaCreateAllocator(&createInfo, &allocator) != VK_SUCCESS) {
+		std::cerr << "Vulkan: failed to create vma allocator" << std::endl;
+		return false;
+	}
+
+	return true;
+}
+
+bool VulkanApi::createSwapChain() {
+	uint32_t format;
+	SwapChainSupportDetails swapChainDetails = querrySwapChainSupport(physicalDevice, surface);
+	VkSurfaceFormatKHR surfaceFormat = chooseSwapChainFormat(swapChainDetails.surfaceFormats);
+	VkPresentModeKHR presentMode = chooseSwapChainPresentMode(swapChainDetails.presentModes);
+	VkExtent2D extents = chooseSwapChainExtent(swapChainDetails.capabilities, window);
+
+	uint32_t imageCount = swapChainDetails.capabilities.minImageCount + 1;
+
+	if (swapChainDetails.capabilities.maxImageCount > 0 &&
+		imageCount < swapChainDetails.capabilities.maxImageCount)
+		imageCount = swapChainDetails.capabilities.maxImageCount;
+
+	VkSwapchainCreateInfoKHR createInfo{
+		.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+		.surface = surface,
+		.minImageCount = imageCount,
+		.imageFormat = surfaceFormat.format,
+		.imageColorSpace = surfaceFormat.colorSpace,
+		.imageExtent = extents,
+		.imageArrayLayers = 1,
+		.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
+		.preTransform = swapChainDetails.capabilities.currentTransform,
+		.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+		.presentMode = presentMode,
+		.clipped = true,
+		.oldSwapchain = nullptr,
+	};
+
+	if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
+		std::cerr << "Vulkan: failed to create swap chain" << std::endl;
+		return false;
+	}
+
+	vkGetSwapchainImagesKHR(device, swapChain,&imageCount, nullptr);
+	swapChainImages.resize(imageCount);
+	vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
+
+	swapchainFormat = surfaceFormat.format;
+	swapchainExtent = extents;
+
+	return true;
+}
+
+bool VulkanApi::createSwapChainImageViews() {
+	swapChainImageViews.resize(swapChainImages.size());
+
+	for (size_t i = 0; i < swapChainImages.size(); i++) {
+		VkImageViewCreateInfo createInfo{
+			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+			.image = swapChainImages[i],
+			.viewType = VK_IMAGE_VIEW_TYPE_2D,
+			.format = swapchainFormat,
+			.subresourceRange = {
+				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+				.baseMipLevel = 0,
+				.levelCount = 1,
+				.baseArrayLayer = 0,
+				.layerCount = 1
+			},
+		};
+
+		if (vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS) {
+			std::cerr << "failed to create swap chain image view" << std::endl;
+			return false;
+		}
+	}
+
+
+	return true;
+}
+
+void VulkanApi::cleanupSwapChain() {
+	for (size_t i = 0; i < swapChainImages.size(); i++)
+		vkDestroyImageView(device, swapChainImageViews[i], nullptr);
+
+	vkDestroySwapchainKHR(device, swapChain, nullptr);
+}
+
+void VulkanApi::recreateSwapChain() {
+	int width = 0, height = 0;
+	glfwGetFramebufferSize(window, &width, &height);
+	while (width == 0 || height == 0) {
+		glfwGetFramebufferSize(window, &width, &height);
+		glfwWaitEvents();
+	}
+
+	vkDeviceWaitIdle(device);
+	cleanupSwapChain();
+
+	createSwapChain();
+	createSwapChainImageViews();
+
+}
+
+bool VulkanApi::createSyncObj() {
+	imageAvailableSemaphore.resize(MAX_FRAMES_IN_FLIGHTS);
+	renderFinishSemaphore.resize(swapChainImages.size());
+	drawFences.resize(MAX_FRAMES_IN_FLIGHTS);
+
+	VkSemaphoreCreateInfo semaphoreInfo = {
+		.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+	};
+
+	VkFenceCreateInfo fenceInfo = {
+	.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+	.flags = VK_FENCE_CREATE_SIGNALED_BIT,
+	};
+
+	for (size_t i = 0; i < swapChainImages.size(); i++)
+		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr,
+			&renderFinishSemaphore[i]) != VK_SUCCESS)
+			throw std::runtime_error("failed to create renderSemaphore");
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHTS; i++)
+		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr,
+			&imageAvailableSemaphore[i]) ||
+			vkCreateFence(device, &fenceInfo, nullptr, &drawFences[i]) !=
+			VK_SUCCESS) {
+			std::cerr << "Vulkan: failed to create sync objs" << std::endl;
+			return false;
+		}
+
+	return true;
+}
+
+void VulkanApi::acquireSwapChainIndex(uint32_t frameIndex) {
+	if (vkWaitForFences(device, 1, &drawFences[frameIndex], VK_TRUE,
+		UINT64_MAX) != VK_SUCCESS)
+		throw std::runtime_error("failed to wait for draw fence");
+
+	vkResetFences(device, 1, &drawFences[frameIndex]);
+
+	VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX,
+		imageAvailableSemaphore[frameIndex],
+		nullptr, &imageIndex);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR)
+		recreateSwapChain();
+}
+
+void VulkanApi::submit(const std::vector<VkCommandBuffer>& cmdBuffs, uint32_t frameIndex) {
+
+	VkSemaphore waitSemaphore[] = { imageAvailableSemaphore[frameIndex] };
+	VkSemaphore signalSemaphore[] = { renderFinishSemaphore[imageIndex] };
+
+	VkPipelineStageFlags  waitStages[] = {
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+	};
+
+	VkSubmitInfo submitInfo = {
+		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+		.waitSemaphoreCount = 1,
+		.pWaitSemaphores = waitSemaphore,
+		.pWaitDstStageMask = waitStages,
+		.commandBufferCount = (uint32_t)cmdBuffs.size(),
+		.pCommandBuffers = cmdBuffs.data(),
+		.signalSemaphoreCount = 1,
+		.pSignalSemaphores = signalSemaphore,
+	};
+
+	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, drawFences[frameIndex]) != VK_SUCCESS) {
+		std::cerr << "Vulkan: failed to submit the graphics queue" << std::endl;
+		assert(false);
+	}
+
+	VkSwapchainKHR swapChains[] = { swapChain };
+
+	VkPresentInfoKHR presentInfo = {
+		.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+		.waitSemaphoreCount = 1,
+		.pWaitSemaphores = signalSemaphore,
+		.swapchainCount = 1,
+		.pSwapchains = swapChains,
+		.pImageIndices = &imageIndex,
+	};
+
+	VkResult result = vkQueuePresentKHR(presentQueue, &presentInfo);
+
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) 
+		recreateSwapChain();
+	else if (result != VK_SUCCESS) {
+		std::cerr << "Vulkan: Failed to present swap chain image" << std::endl;
+		assert(false);
+	}
+}
+
 VulkanApi::~VulkanApi() {
+	for (size_t i = 0; i != MAX_FRAMES_IN_FLIGHTS; i++) {
+		vkDestroySemaphore(device, imageAvailableSemaphore[i], nullptr);
+		vkDestroyFence(device, drawFences[i], nullptr);
+	}
+
+	for (uint32_t i = 0; i < swapChainImages.size(); i++)
+		vkDestroySemaphore(device, renderFinishSemaphore[i], nullptr);
+
+
+	cleanupSwapChain();
+
+	vmaDestroyAllocator(allocator);
 
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);

@@ -2,8 +2,6 @@
 	"name": "purge",
 	"version": "0.1.0",
 	"dependencies": [
-		"glfw3",
-		"ktx",
-		"assimp"
+		"glfw3"
 	]
 }

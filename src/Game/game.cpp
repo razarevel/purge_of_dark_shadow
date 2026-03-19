@@ -2,11 +2,15 @@
 #include <iostream>
 
 Game::Game() {
+
 	ren_ = new Renderer(settings);
 }
 
 void Game::run() {
-	std::cout << "yui ga doku son" << std::endl;
+
+	std::cout << "Grapics Api: " << (settings.api == Directx11 ? "Directx 11" : "Vulkan") << std::endl;
+
+	ren_->blackScreen();
 }
 
 Game::~Game() {

@@ -1,5 +1,7 @@
 #include "Engine/renderer/vulkan/vk_utils.h"
 #include <iostream>
+#include <cassert>
+#include <algorithm>
 
 bool checkValidation() {
 	uint32_t layerCount;
@@ -132,4 +134,62 @@ QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surfa
 	}
 
 	return indices;
+}
+
+VkSurfaceFormatKHR chooseSwapChainFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
+	for (const auto& availableFormat : availableFormats)
+		if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB &&
+			availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			return availableFormat;
+	return availableFormats[0];
+}
+
+VkPresentModeKHR chooseSwapChainPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
+	for (const auto& presentMode : availablePresentModes)
+		if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+			return presentMode;
+	return VK_PRESENT_MODE_FIFO_KHR;
+}
+
+VkExtent2D chooseSwapChainExtent(VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow* window) {
+	assert(window);
+	if (capabilities.minImageExtent.width != std::numeric_limits<uint32_t>::max())
+		return capabilities.minImageExtent;
+	int width, height;
+	glfwGetFramebufferSize(window, &width, &height);
+	VkExtent2D extent = {
+		static_cast<uint32_t>(width),
+		static_cast<uint32_t>(height),
+	};
+
+	extent.width = std::clamp(extent.width, capabilities.minImageExtent.width,
+		capabilities.maxImageExtent.width);
+	extent.height = std::clamp(extent.height, capabilities.minImageExtent.height,
+		capabilities.maxImageExtent.height);
+	return extent;
+}
+
+SwapChainSupportDetails querrySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface) {
+	SwapChainSupportDetails details;
+
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface,
+		&details.capabilities);
+
+	uint32_t formatCount;
+	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+	if (formatCount != 0) {
+		details.surfaceFormats.resize(formatCount);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount,
+			details.surfaceFormats.data());
+	}
+	uint32_t presentCount;
+	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentCount,
+		nullptr);
+	if (presentCount != 0) {
+		details.presentModes.resize(presentCount);
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentCount,
+			details.presentModes.data());
+	}
+
+	return details;
 }
