@@ -19,7 +19,7 @@ struct Settings {
 	uint32_t height = 800;
 	const std::string appName = "Purge of Black Shadow";
 	Window_Mode win_mode = Window;
-	Api api = Vulkan;
+	Api api = Directx11;
 
 	void load();
 	void save();

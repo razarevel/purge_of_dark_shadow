@@ -1,6 +1,8 @@
 #include "Engine/renderer/renderer.h"
 #include <cassert>
 #include <iostream>
+#include "Engine/stbi_image.h"
+#include <glm/ext.hpp>
 
 #ifdef _DEBUG
 constexpr bool enableDebugger = true;
@@ -10,6 +12,7 @@ constexpr bool enableDebugger = false;
 
 
 Renderer::Renderer(Settings &set) : settings(set) {
+
 	initWindow();
 	bool vkWorked = false;
 
@@ -100,120 +103,17 @@ void Renderer::drawTriangle(uint32_t frameIndex) {
 	// dx
 
 	if (settings.api == Directx11) {
-
-
-		if (_triangleBuff == nullptr) {
-
-			std::vector<D3D11_INPUT_ELEMENT_DESC> vertexInputLayoutInfo{
-			{
-				"POSITION",
-				0,
-				DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,
-				0,
-				offsetof(Vertex, pos),
-				D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA,
-				0,
-			},
-			{
-				"COLOR",
-				0,
-				DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,
-				0,
-				offsetof(Vertex, color),
-				D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA,
-				0,
-			},
-			};
-
-			_vertexShader = dx11Api->createVertexShader(SHADERS_PATH"triangle.hlsl", vertexInputLayoutInfo, inputLayout);
-			_pixelShader = dx11Api->createPixelShader(SHADERS_PATH"triangle.hlsl");
-
-			Vertex vertices[] = {
-				{  { 0.0f, 0.5f, 0.0f }, { 0.25f, 0.39f, 0.19f }},
-				{  { 0.5f, -0.5f, 0.0f }, { 0.44f, 0.75f, 0.35f }},
-				{  { -0.5f, -0.5f, 0.0f }, { 0.38f, 0.55f, 0.20f }},
-			};
-
-			D3D11_BUFFER_DESC bufferInfo = {
-				.ByteWidth = sizeof(vertices),
-				.Usage = D3D11_USAGE::D3D11_USAGE_IMMUTABLE,
-				.BindFlags = D3D11_BIND_FLAG::D3D11_BIND_VERTEX_BUFFER,
-			};
-
-			D3D11_SUBRESOURCE_DATA  resourcesData = {
-				.pSysMem = vertices,
-			};
-
-			_triangleBuff = dx11Api->createBuffer(bufferInfo, resourcesData);
-		}
-
 		ComPtr<ID3D11DeviceContext>& _deviceContext = dx11Api->getDeviceContext();
 		ComPtr<IDXGISwapChain1>& _swapChain = dx11Api->getSwapChain();
 
 		constexpr UINT vertexStride = sizeof(Vertex);
 		constexpr UINT vertexOffset = 0;
 
-		_deviceContext->IASetInputLayout(inputLayout.Get());
-		_deviceContext->IASetVertexBuffers(0, 1, _triangleBuff.GetAddressOf(), &vertexStride, &vertexOffset);
-		_deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		_deviceContext->VSSetShader(_vertexShader.Get(), nullptr, 0);
-
-		_deviceContext->PSSetShader(_pixelShader.Get(), nullptr, 0);
-
-		_deviceContext->Draw(3, 0);
 
 		_swapChain->Present(1, 0);
 	}
 
 	if (settings.api == Vulkan) {
-
-		if (vertBuf == nullptr) {
-
-			Vertex vertices[] = {
-				{  { 0.0f, 0.5f, 0.0f }, { 0.25f, 0.39f, 0.19f }},
-				{  { 0.5f, -0.5f, 0.0f }, { 0.44f, 0.75f, 0.35f }},
-				{  { -0.5f, -0.5f, 0.0f }, { 0.38f, 0.55f, 0.20f }},
-			};
-
-			VkBuffInfo info = {
-					.size = 3 * sizeof(Vertex),
-					.data = vertices,
-					.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-					.type = Storage_Type,
-				};
-
-			vertBuf = new VkBuff(vkApi->getAllocator(), buff, info);
-
-			pipeline = new VkPipelineModule(vkApi->getDevice(), VkPipelineInfo{
-					.input = {
-							.vertexInput = {
-								{.location = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = offsetof(Vertex, pos)},
-								{.location = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = offsetof(Vertex, color)},
-								},
-					.binding = {
-							.stride = sizeof(Vertex),
-						},
-					},
-					.colorFormat = vkApi->getSwapChainFormat(),
-					.setLayout = descriptor->getSetLayout(),
-				});
-
-			pipeline->addShaderStage(SHADERS_PATH"spvs/main.spv", "VsMain", VK_SHADER_STAGE_VERTEX_BIT);
-			pipeline->addShaderStage(SHADERS_PATH"spvs/main.spv", "PsMain", VK_SHADER_STAGE_FRAGMENT_BIT);
-
-			pipeline->initGraphics();
-
-		}
-
-		VkCommandBuffer& cmdBuff = commandBuffers[frameIndex];
-
-
-		vkCmdBindPipeline(cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getPipeline());
-		vkCmdBindDescriptorSets(cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getLayout(), 0, 1, &descriptor->getSets()[frameIndex], 0, nullptr);
-		VkDeviceSize offsets[] = {0};
-		vkCmdBindVertexBuffers(cmdBuff, 0, 1, &vertBuf->getBuffer(), offsets);
-
-		buff->cmdDraw(cmdBuff, 3);
 
 	}
 
@@ -295,8 +195,8 @@ void Renderer::onResize(int width, int height) {
 
 Renderer::~Renderer() {
 	if (vkApi != nullptr) {
+		delete descriptor;
 		delete buff;
-
 		delete vkApi;
 	}
 	if (dx11Api != nullptr)

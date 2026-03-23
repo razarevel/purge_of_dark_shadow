@@ -6,7 +6,7 @@
 
 #include <iostream>
 #include <cassert>
-#include <fstream>
+
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -23,12 +23,17 @@ bool Dx11Api::Initialize() {
 	}
 
 	constexpr D3D_FEATURE_LEVEL deviceFeatureLevel = D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_11_1;
+	uint32_t deviceFlags = 0;
+#if !defined(NDEBUG)
+	deviceFlags |= D3D11_CREATE_DEVICE_FLAG::D3D11_CREATE_DEVICE_DEBUG;
+#endif
+
 
 	if (FAILED(D3D11CreateDevice(
 		nullptr,
 		D3D_DRIVER_TYPE::D3D_DRIVER_TYPE_HARDWARE,
 		nullptr,
-		0,
+		deviceFlags,
 		&deviceFeatureLevel,
 		1,
 		D3D11_SDK_VERSION,
@@ -38,6 +43,13 @@ bool Dx11Api::Initialize() {
 		std::cout << "D3D11:: failed to create device" << std::endl;
 		return false;
 	}
+
+#if !defined(NDEBUG)
+	if (FAILED(_device.As(&_debug))) {
+		std::cerr << "D3D11: failed to create debug" << std::endl;
+		return false;
+	}
+#endif
 
 	DXGI_SWAP_CHAIN_DESC1 swapChainDes = {
 		.Width = (UINT)(settings.width),
@@ -146,6 +158,7 @@ ComPtr<ID3D11VertexShader> Dx11Api::createVertexShader(const char* filename, std
 		assert(false);
 	}
 
+
 	if (!infos.empty()) {
 		if (FAILED(_device->CreateInputLayout(
 			infos.data(),
@@ -207,11 +220,17 @@ ComPtr<ID3DBlob> Dx11Api::CompileShader(const std::string& filename, const std::
 	return tempShaderBlob;
 }
 
+
 Dx11Api::~Dx11Api() {
 	_deviceContext->Flush();
 	destroySwapChainResources();
 	_swapChain.Reset();
 	_dxgiFactory.Reset();
 	_deviceContext.Reset();
+
+#if !defined(NDEBUG)
+	_debug->ReportLiveDeviceObjects(D3D11_RLDO_FLAGS::D3D11_RLDO_DETAIL);
+#endif
+
 	_device.Reset();
 }

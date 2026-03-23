@@ -6,12 +6,15 @@
 #include "vulkan/vk_buff.h"
 #include "vulkan/vk_descriptor.h"
 #include "vulkan/vk_pipeline.h"
+#include "vulkan/vk_image.h"
+
+#include "directx/dx_image.h"
 
 #include <glm/glm.hpp>
 
 struct Vertex {
 	glm::vec3 pos;
-	glm::vec3 color;
+	glm::vec2 uv;
 };
 
 struct Renderer {
@@ -30,15 +33,10 @@ private:
 	VkCmdModule* buff;
 
 	// dx resources
-	ComPtr<ID3D11Buffer> _triangleBuff = nullptr;
-	ComPtr<ID3D11InputLayout> inputLayout = nullptr;
-	ComPtr<ID3D11VertexShader> _vertexShader = nullptr;
-	ComPtr<ID3D11PixelShader >_pixelShader = nullptr;
 
-	// vk resources
-	VkBuff* vertBuf = nullptr;
-	VkDescriptor* descriptor = nullptr;
-	VkPipelineModule* pipeline;
+
+	// vk resouces
+	VkDescriptor* descriptor;
 
 	void initWindow();
 

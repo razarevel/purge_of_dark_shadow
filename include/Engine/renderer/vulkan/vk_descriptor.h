@@ -20,6 +20,8 @@ struct VkDescriptor {
 	VkDescriptorSetLayout& getSetLayout() { return layout; }
 	std::vector<VkDescriptorSet>& getSets() { return sets; }
 
+	uint32_t updateImageIndex(VkImageView& view, VkSampler& sampler);
+
 private:
 	VkDevice device;
 	VkDescriptorInfo info;
@@ -27,6 +29,8 @@ private:
 	VkDescriptorPool pool;
 	VkDescriptorSetLayout layout;
 	std::vector<VkDescriptorSet> sets;
+
+	uint32_t imageIndex = 0;
 
 	void createDescriptorPool();
 	void createDescriptorSetLayout();

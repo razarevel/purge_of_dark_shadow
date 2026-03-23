@@ -1,6 +1,7 @@
 #include "Engine/renderer/vulkan/vk_descriptor.h"
 #include <iostream>
 #include <cassert>
+#include <array>
 
 VkDescriptor::VkDescriptor(VkDevice& device, const VkDescriptorInfo& info) 
 	:info(info), device(device) {
@@ -74,6 +75,49 @@ void VkDescriptor::createDescriptorSets() {
 	}
 }
 
+uint32_t VkDescriptor::updateImageIndex(VkImageView& view, VkSampler& sampler) {
+	uint32_t currentIndex = imageIndex;
+	imageIndex++;
+	VkDescriptorImageInfo imageInfo = {
+		.imageView = view,
+		.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	};
+
+	VkDescriptorImageInfo samplerInfo{
+	.sampler = sampler,
+	};
+
+	for (size_t i = 0; i < 2; i++) {
+		std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+		descriptorWrites[0] = {
+			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.dstSet = sets[i],
+			.dstBinding = 0,
+			.dstArrayElement = currentIndex,
+			.descriptorCount = 1,
+			.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+			.pImageInfo = &imageInfo,
+		};
+
+		descriptorWrites[1] = {
+	   .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+	   .dstSet = sets[i],
+	   .dstBinding = 1,
+	   .dstArrayElement = currentIndex,
+	   .descriptorCount = 1,
+	   .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+	   .pImageInfo = &samplerInfo,
+		};
+
+		vkUpdateDescriptorSets(device, descriptorWrites.size(),
+			descriptorWrites.data(), 0, nullptr);
+	}
+
+	return currentIndex;
+}
+
+
 VkDescriptor::~VkDescriptor() {
 	vkDestroyDescriptorPool(device, pool, nullptr);
+	vkDestroyDescriptorSetLayout(device, layout, nullptr);
 }

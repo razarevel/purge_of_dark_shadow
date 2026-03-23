@@ -28,10 +28,9 @@ struct VulkanApi {
 	std::vector<VkImageView>& getSwapChainImageViews() { return swapChainImageViews; }
 
 	uint32_t &getImageIndex() { return imageIndex; }
-
 	void acquireSwapChainIndex(uint32_t frameIndex);
-
 	VmaAllocator& getAllocator() { return allocator; }
+	VkPhysicalDevice& getPhysicalDevice() { return physicalDevice; }
 
 private:
 	bool enableDebugger = true;
