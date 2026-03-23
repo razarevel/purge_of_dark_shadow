@@ -51,7 +51,12 @@ void VkTexture::createImage() {
 
 		transitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-		copyBufferToImage(stagingBuffer);
+		VkRect2D region = {
+				.offset = {0, 0},
+			.extent = {texInfo.extent.width, texInfo.extent.height},
+		};
+
+		copyBufferToImage(stagingBuffer, region);
 
 		transitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
@@ -161,11 +166,11 @@ void VkTexture::transitionImageLayout(VkImageLayout oldLayout, VkImageLayout new
 	attachInfo.cmd->endSingleCommandBuffer(commandBuffer);
 }
 
-void VkTexture::copyBufferToImage(VkBuffer& buffer) {
+void VkTexture::copyBufferToImage(VkBuffer& buffer, const VkRect2D& imageRegion, uint32_t bufferRowLength) {
 	VkCommandBuffer commandBuffer = attachInfo.cmd->beginSingleCommandBuffer();
 	VkBufferImageCopy region{
 		.bufferOffset = 0,
-		.bufferRowLength = 0,
+		.bufferRowLength = bufferRowLength,
 		.bufferImageHeight = 0,
 		.imageSubresource =
 			{
@@ -174,8 +179,8 @@ void VkTexture::copyBufferToImage(VkBuffer& buffer) {
 				.baseArrayLayer = 0,
 				.layerCount = 1,
 			},
-		.imageOffset = {0, 0, 0},
-		.imageExtent = {texInfo.extent.width, texInfo.extent.height, 1},
+		.imageOffset = {imageRegion.offset.x, imageRegion.offset.y, 0},
+		.imageExtent = {imageRegion.extent.width, imageRegion.extent.height, 1},
 	};
 
 	vkCmdCopyBufferToImage(commandBuffer, buffer, image,
@@ -183,6 +188,26 @@ void VkTexture::copyBufferToImage(VkBuffer& buffer) {
 
 	attachInfo.cmd->endSingleCommandBuffer(commandBuffer);
 
+}
+
+void VkTexture::update(const VkRect2D& region, const void* data, uint32_t bufferRowLenght) {
+	VkDeviceSize imageSize= bufferRowLenght * region.extent.height * 4;
+
+	VkBuffer stagingBuffer;
+	VmaAllocation stagingAllocation;
+	VmaAllocationInfo stagingAllocInfo;
+
+	VkBuff::createStagingBuffer(attachInfo.alloc, imageSize, stagingBuffer, stagingAllocation, stagingAllocInfo);
+
+	vmaCopyMemoryToAllocation(attachInfo.alloc, data, stagingAllocation, 0, imageSize);
+
+	transitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+	copyBufferToImage(stagingBuffer, region, bufferRowLenght);
+
+	transitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	vmaDestroyBuffer(attachInfo.alloc, stagingBuffer, stagingAllocation);
 }
 
 VkTexture::~VkTexture() {

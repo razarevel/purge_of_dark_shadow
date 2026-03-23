@@ -16,8 +16,8 @@ void VkPipelineModule::initGraphics() {
 }
 
 
-void VkPipelineModule::addShaderStage(const char* filename, const char* entryName, VkShaderStageFlagBits stage) {
-	if(code.empty())
+void VkPipelineModule::addShaderStage(const char* filename, const char* entryName, VkShaderStageFlagBits stage, bool reload) {
+	if(code.empty() || reload)
 		code = readShaderFile(filename);
 
 	VkShaderModuleCreateInfo createInfo{
@@ -32,15 +32,14 @@ void VkPipelineModule::addShaderStage(const char* filename, const char* entryNam
 		std::cerr << "Failed to create shader module" << std::endl;
 	}
 
-	shaders.emplace_back(sm);
-
-
 	stages.emplace_back(VkPipelineShaderStageCreateInfo{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 			.stage = stage,
 			.module = sm,
 			.pName  = entryName,
 		});
+
+	shaders.emplace_back(sm);
 
 }
 

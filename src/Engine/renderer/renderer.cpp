@@ -85,6 +85,8 @@ Renderer::Renderer(Settings &set) : settings(set) {
 			};
 
 			descriptor = new VkDescriptor(vkApi->getDevice(),info);
+
+			imgui = new ImguiRenderer(vkApi, window, descriptor, buff);
 		}
 	}
 
@@ -95,6 +97,7 @@ Renderer::Renderer(Settings &set) : settings(set) {
 			assert(false);
 		}
 		std::cout << "Directx 11 initialized successfully" << std::endl;
+		imgui = new ImguiRenderer(dx11Api, window);
 	}
 
 }
@@ -109,12 +112,17 @@ void Renderer::drawTriangle(uint32_t frameIndex) {
 		constexpr UINT vertexStride = sizeof(Vertex);
 		constexpr UINT vertexOffset = 0;
 
+		imgui->dxBeginFrame();
+		ImGui::ShowDemoWindow();
+		imgui->dxEndFrame();
 
 		_swapChain->Present(1, 0);
 	}
 
 	if (settings.api == Vulkan) {
-
+		imgui->vkBeginFrame({ settings.width, settings.height });
+		ImGui::ShowDemoWindow();
+		imgui->vkEndFrame(commandBuffers[frameIndex], frameIndex);
 	}
 
 
@@ -194,6 +202,7 @@ void Renderer::onResize(int width, int height) {
 }
 
 Renderer::~Renderer() {
+	delete imgui;
 	if (vkApi != nullptr) {
 		delete descriptor;
 		delete buff;

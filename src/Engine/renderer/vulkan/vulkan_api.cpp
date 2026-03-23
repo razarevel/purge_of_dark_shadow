@@ -192,6 +192,7 @@ bool VulkanApi::createLogicalDevice() {
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
 		.pNext = &vulkan13Features,
 		.storageBuffer16BitAccess = VK_TRUE,
+		.shaderDrawParameters = VK_TRUE,
 	};
 
 	VkPhysicalDeviceFeatures2 deviceFeatures2 = {
@@ -423,6 +424,15 @@ void VulkanApi::submit(const std::vector<VkCommandBuffer>& cmdBuffs, uint32_t fr
 		std::cerr << "Vulkan: Failed to present swap chain image" << std::endl;
 		assert(false);
 	}
+}
+
+uint64_t VulkanApi::gpuAddress(VkBuffer& buffer) {
+	VkBufferDeviceAddressInfo addrInfo{
+	 .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+	 .buffer = buffer,
+	};
+	VkDeviceAddress address = vkGetBufferDeviceAddress(device, &addrInfo);
+	return address;
 }
 
 VulkanApi::~VulkanApi() {

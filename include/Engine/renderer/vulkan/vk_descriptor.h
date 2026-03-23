@@ -30,7 +30,7 @@ private:
 	VkDescriptorSetLayout layout;
 	std::vector<VkDescriptorSet> sets;
 
-	uint32_t imageIndex = 0;
+	uint32_t imageIndex = 1;
 
 	void createDescriptorPool();
 	void createDescriptorSetLayout();

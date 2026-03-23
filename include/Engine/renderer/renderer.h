@@ -3,10 +3,10 @@
 #include "Engine/settings.h"
 #include "directx/dx11_api.h"
 #include "vulkan/vulkan_api.h"
-#include "vulkan/vk_buff.h"
 #include "vulkan/vk_descriptor.h"
-#include "vulkan/vk_pipeline.h"
-#include "vulkan/vk_image.h"
+
+#include "Engine/imgui_renderer.h"
+
 
 #include "directx/dx_image.h"
 
@@ -24,6 +24,8 @@ struct Renderer {
 	GLFWwindow* window = nullptr;
 	VulkanApi* vkApi = nullptr;
 	Dx11Api* dx11Api = nullptr;
+
+	ImguiRenderer* imgui = nullptr;
 
 	void blackScreen();
 

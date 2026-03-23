@@ -250,6 +250,9 @@ void VkCmdModule::cmdDraw(VkCommandBuffer& cmdBuff, uint32_t vertexCount, uint32
     vkCmdDraw(cmdBuff, vertexCount, instanceCount, firstVertex, firstInstance);
 }
 
+void VkCmdModule::cmdDrawIndex(VkCommandBuffer& cmdBuff, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) {
+    vkCmdDrawIndexed(cmdBuff, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+}
 
 VkCmdModule::~VkCmdModule() {
     vkDestroyCommandPool(device, commandPool, nullptr);

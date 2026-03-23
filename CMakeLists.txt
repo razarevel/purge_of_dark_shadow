@@ -11,7 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(Vulkan REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
-find_package(thirdParty/imgui)
+add_subdirectory(thirdParty/imgui)
 find_package(directxtex CONFIG REQUIRED)
 
 
@@ -27,6 +27,7 @@ target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC SHADERS_PATH="${CMAKE_
 target_include_directories(purge
     PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/thirdParty/imgui"
    
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"

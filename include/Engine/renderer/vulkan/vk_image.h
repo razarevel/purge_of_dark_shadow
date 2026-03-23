@@ -15,9 +15,9 @@ struct VkTextureInfo {
 	VkImageType type = VK_IMAGE_TYPE_2D;
 	VkImageViewType viewTyp = VK_IMAGE_VIEW_TYPE_2D;
 	VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
-	VkExtent2D extent;
-	VkDeviceSize size;
-	const void* data;
+	VkExtent2D extent = {};
+	VkDeviceSize size = 0;
+	const void* data = nullptr;
 	uint32_t mipLevel = 1;
 	uint32_t arrayLayer = 1;
 	VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
@@ -44,6 +44,8 @@ struct VkTexture {
 
 	uint32_t& getIndex() { return index; }
 
+	void update(const VkRect2D& region, const void* data, uint32_t bufferRowLenght);
+
 private:
 	VkTextureAttachInfo attachInfo;
 	VkTextureInfo texInfo;
@@ -61,5 +63,5 @@ private:
 	void createImageSampler();
 
 	void transitionImageLayout(VkImageLayout oldLayout, VkImageLayout newLayout);
-	void copyBufferToImage(VkBuffer& buffer);
+	void copyBufferToImage(VkBuffer& buffer,const VkRect2D& region, uint32_t bufferRowLength = 0);
 };

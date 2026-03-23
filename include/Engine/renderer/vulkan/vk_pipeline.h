@@ -48,7 +48,7 @@ struct VkPipelineModule {
 	VkPipelineModule(VkDevice &device, const VkPipelineInfo& info);
 	~VkPipelineModule();
 
-	void addShaderStage(const char *filename, const char* entryName, VkShaderStageFlagBits stage);
+	void addShaderStage(const char *filename, const char* entryName, VkShaderStageFlagBits stage, bool reload = false);
 
 	VkPipeline& getPipeline() { return pipeline; }
 	VkPipelineLayout& getLayout() { return layout; }

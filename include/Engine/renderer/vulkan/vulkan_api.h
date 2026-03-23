@@ -32,6 +32,8 @@ struct VulkanApi {
 	VmaAllocator& getAllocator() { return allocator; }
 	VkPhysicalDevice& getPhysicalDevice() { return physicalDevice; }
 
+	uint64_t gpuAddress(VkBuffer &buffer);
+
 private:
 	bool enableDebugger = true;
 
