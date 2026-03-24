@@ -254,7 +254,9 @@ void ImguiRenderer::dxEndFrame() {
 ImguiRenderer::~ImguiRenderer() {
 	if (vkApi != nullptr) {
 		for (uint32_t i = 0; i < 2; i++) {
-			delete drawables_[i].vb_;
+			if(drawables_[i].vb_)
+				delete drawables_[i].vb_;
+			if(drawables_[i].ib_)
 			delete drawables_[i].ib_;
 		}
 

@@ -9,6 +9,8 @@ struct VkTextureAttachInfo {
 	VmaAllocator& alloc;
 	VkCmdModule* cmd;
 	VkDescriptor* descriptor;
+	VkBuffer ringBuff = VK_NULL_HANDLE;
+	uint32_t offset = 0;
 };
 
 struct VkTextureInfo {
@@ -63,5 +65,5 @@ private:
 	void createImageSampler();
 
 	void transitionImageLayout(VkImageLayout oldLayout, VkImageLayout newLayout);
-	void copyBufferToImage(VkBuffer& buffer,const VkRect2D& region, uint32_t bufferRowLength = 0);
+	void copyBufferToImage(VkBuffer& buffer,const VkRect2D& region, uint32_t bufferRowLength = 0, uint32_t offset = 0);
 };

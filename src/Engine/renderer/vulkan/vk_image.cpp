@@ -7,9 +7,8 @@ VkTexture::VkTexture(const VkTextureAttachInfo& attachInfo, const VkTextureInfo&
 	createImage();
 	createImageView();
 
-	if (texInfo.data) {
+	if (texInfo.usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
 		createImageSampler();
-
 		index = attachInfo.descriptor->updateImageIndex(view, sampler);
 	}
 }
@@ -44,24 +43,26 @@ void VkTexture::createImage() {
 		VkBuffer stagingBuffer;
 		VmaAllocation stagingAllocation;
 		VmaAllocationInfo stagingAllocInfo;
-
 		VkBuff::createStagingBuffer(attachInfo.alloc, texInfo.size, stagingBuffer, stagingAllocation, stagingAllocInfo);
-
 		vmaCopyMemoryToAllocation(attachInfo.alloc, texInfo.data, stagingAllocation, 0, texInfo.size);
-
 		transitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
 		VkRect2D region = {
 				.offset = {0, 0},
 			.extent = {texInfo.extent.width, texInfo.extent.height},
 		};
-
 		copyBufferToImage(stagingBuffer, region);
-
 		transitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
 		vmaDestroyBuffer(attachInfo.alloc, stagingBuffer, stagingAllocation);
 
+	} 
+	else if (attachInfo.ringBuff != VK_NULL_HANDLE) {
+		transitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		VkRect2D region = {
+				.offset = {0, 0},
+			.extent = {texInfo.extent.width, texInfo.extent.height},
+		};
+		copyBufferToImage(attachInfo.ringBuff, region, 0, attachInfo.offset);
+		transitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 }
 
@@ -166,10 +167,10 @@ void VkTexture::transitionImageLayout(VkImageLayout oldLayout, VkImageLayout new
 	attachInfo.cmd->endSingleCommandBuffer(commandBuffer);
 }
 
-void VkTexture::copyBufferToImage(VkBuffer& buffer, const VkRect2D& imageRegion, uint32_t bufferRowLength) {
+void VkTexture::copyBufferToImage(VkBuffer& buffer, const VkRect2D& imageRegion, uint32_t bufferRowLength, uint32_t offset) {
 	VkCommandBuffer commandBuffer = attachInfo.cmd->beginSingleCommandBuffer();
 	VkBufferImageCopy region{
-		.bufferOffset = 0,
+		.bufferOffset = offset,
 		.bufferRowLength = bufferRowLength,
 		.bufferImageHeight = 0,
 		.imageSubresource =

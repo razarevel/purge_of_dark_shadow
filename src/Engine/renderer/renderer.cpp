@@ -87,6 +87,10 @@ Renderer::Renderer(Settings &set) : settings(set) {
 			descriptor = new VkDescriptor(vkApi->getDevice(),info);
 
 			imgui = new ImguiRenderer(vkApi, window, descriptor, buff);
+
+			textures = new Textures(vkApi, descriptor, buff);
+
+			textures->loadToVk();
 		}
 	}
 
@@ -98,6 +102,8 @@ Renderer::Renderer(Settings &set) : settings(set) {
 		}
 		std::cout << "Directx 11 initialized successfully" << std::endl;
 		imgui = new ImguiRenderer(dx11Api, window);
+		textures = new Textures(dx11Api);
+		textures->loadToDX();
 	}
 
 }
@@ -113,7 +119,9 @@ void Renderer::drawTriangle(uint32_t frameIndex) {
 		constexpr UINT vertexOffset = 0;
 
 		imgui->dxBeginFrame();
-		ImGui::ShowDemoWindow();
+
+		gui();
+
 		imgui->dxEndFrame();
 
 		_swapChain->Present(1, 0);
@@ -121,12 +129,49 @@ void Renderer::drawTriangle(uint32_t frameIndex) {
 
 	if (settings.api == Vulkan) {
 		imgui->vkBeginFrame({ settings.width, settings.height });
-		ImGui::ShowDemoWindow();
+		gui();
 		imgui->vkEndFrame(commandBuffers[frameIndex], frameIndex);
 	}
-
-
 }
+
+void Renderer::gui() {
+	ImGui::Begin("Viewport");
+	ImGui::Text("Hello");
+
+	if (settings.api == Vulkan) {
+		auto& vkTextures = textures->getVkTextures();
+
+		if (ImGui::BeginTable("Texture Column", 3)) {
+			for (auto& texs : vkTextures) {
+				auto it = texs.second.find("diffuse");
+
+				uint32_t texIndex = it->second->getIndex();
+
+				ImGui::TableNextColumn();
+				if (ImGui::ImageButton(texs.first.c_str(), texIndex,
+					ImVec2(100, 100)))
+					std::cout << texs.first << std::endl;
+			}
+			ImGui::EndTable();
+		}
+	}
+	else if (settings.api == Directx11) {
+		auto& dxTextures = textures->getDxTextures();
+
+		if (ImGui::BeginTable("Texture Column", 3)) {
+			for (auto& texs : dxTextures) {
+				auto it = texs.second.find("diffuse");
+				ImGui::TableNextColumn();
+				if (ImGui::ImageButton(texs.first.c_str(), (void*)it->second->getTexture().Get(), ImVec2(100, 100)))
+					std::cout << texs.first << std::endl;
+			}
+			ImGui::EndTable();
+		}
+	}
+
+	ImGui::End();
+}
+
 
 
 void Renderer::blackScreen() {

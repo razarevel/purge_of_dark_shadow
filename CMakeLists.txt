@@ -11,8 +11,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(Vulkan REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
-add_subdirectory(thirdParty/imgui)
+find_package(Ktx CONFIG REQUIRED)
 find_package(directxtex CONFIG REQUIRED)
+add_subdirectory(thirdParty/imgui)
 
 
 file(GLOB_RECURSE MY_SOURCES CMAKE_CONFIGURE_DEPENDS
@@ -33,13 +34,6 @@ target_include_directories(purge
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
-target_link_directories(purge PRIVATE
-    ${SLANG_DIR}/lib
-)
-
-file(GLOB SLANG_DLLS "${SLANG_DIR}/bin/*.dll")
-
-
 
 target_link_libraries(purge
     PUBLIC
@@ -47,4 +41,5 @@ target_link_libraries(purge
         imgui
         Vulkan::Vulkan
         Microsoft::DirectXTex
+        KTX::ktx
 )

@@ -10,7 +10,20 @@ struct DxImageSamplerInfo{
 };
 
 struct DxImage {
-	static ComPtr<ID3D11SamplerState> CreateTextureSampler(ComPtr<ID3D11Device>& device, const DxImageSamplerInfo& info);
-	static ComPtr<ID3D11ShaderResourceView> CreateTextureView(ComPtr<ID3D11Device>& device, std::string& filename);
-	static ComPtr<ID3D11ShaderResourceView> CreateTextureViewFromDDS(ID3D11Device *device, std::string &filename);
+	DxImage(ComPtr<ID3D11Device>& device, std::string& filename, const DxImageSamplerInfo& info);
+	~DxImage();
+
+	ComPtr<ID3D11ShaderResourceView>& getTexture() { return _texture; }
+	ComPtr<ID3D11SamplerState>& getSampler() { return _sampler; }
+private:
+	ComPtr<ID3D11Device> device;
+
+	ComPtr<ID3D11SamplerState> _sampler = nullptr;
+	ComPtr<ID3D11ShaderResourceView> _texture = nullptr;
+	DxImageSamplerInfo info;
+
+	void CreateTextureView(std::string &filename);
+	void CreateTextureViewFromDDS(std::string& filename);
+	void CreateTextureSampler();
+
 };

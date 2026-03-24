@@ -6,6 +6,7 @@
 #include "vulkan/vk_descriptor.h"
 
 #include "Engine/imgui_renderer.h"
+#include "Engine/textures.h"
 
 
 #include "directx/dx_image.h"
@@ -26,6 +27,7 @@ struct Renderer {
 	Dx11Api* dx11Api = nullptr;
 
 	ImguiRenderer* imgui = nullptr;
+	Textures* textures = nullptr;
 
 	void blackScreen();
 
@@ -46,4 +48,5 @@ private:
 	void onResize(int widht, int height);
 
 	void drawTriangle(uint32_t frameIndex = 0);
+	void gui();
 };
